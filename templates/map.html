@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Karnataka Solar Map</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#f0f4f8;
+  --surface:#ffffff;
+  --surface2:#f8fafc;
+  --border:#e2e8f0;
+  --border2:#cbd5e1;
+  --text:#0f172a;
+  --text2:#475569;
+  --text3:#94a3b8;
+  --accent:#f59e0b;
+  --accent-dark:#d97706;
+  --green:#16a34a;
+  --blue:#2563eb;
+  --purple:#7c3aed;
+  --red:#dc2626;
+  --d-default:#bfdbfe;
+  --d-stroke:#ffffff;
+  --d-hover:#3b82f6;
+  --d-selected:#f59e0b;
+  --d-loading:#a78bfa;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text)}
+.page{display:flex;flex-direction:column;height:100vh;min-height:600px}
+
+/* HEADER */
+.header{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:12px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+  box-shadow:0 1px 3px rgba(0,0,0,0.06)
+}
+.header-left{display:flex;align-items:center;gap:12px}
+.hlogo{
+  width:36px;height:36px;
+  background:linear-gradient(135deg,#f59e0b,#ef4444);
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px
+}
+.htitle{font-size:17px;font-weight:700;color:var(--text);letter-spacing:-0.01em}
+.hsub{font-size:11px;color:var(--text3);font-weight:400;margin-top:1px}
+.hbadge{
+  background:#fef3c7;color:#92400e;
+  border:1px solid #fde68a;
+  font-size:11px;font-weight:600;
+  padding:4px 10px;border-radius:20px;
+  letter-spacing:0.02em
+}
+/* spinner */
+.loader {
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid orange;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* BODY */
+.body{display:flex;flex:1;overflow:hidden}
+
+/* MAP PANEL */
+.map-panel{
+  flex:1;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:16px;
+  background:var(--bg);
+  position:relative;
+  overflow:hidden
+}
+.map-panel::before{
+  content:'';
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 40%, rgba(59,130,246,0.05) 0%, transparent 70%);
+  pointer-events:none
+}
+#map-wrap{
+  width:100%;
+  max-width:900px;
+  background:var(--surface);
+  border-radius:16px;
+  border:1px solid var(--border);
+  box-shadow:0 4px 24px rgba(0,0,0,0.08);
+  padding:16px;
+  position:relative
+}
+.map-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px
+}
+.map-title{font-size:13px;font-weight:600;color:var(--text2);letter-spacing:0.01em}
+#map-status{
+  font-size:11px;
+  font-weight:500;
+  padding:3px 10px;
+  border-radius:20px;
+  background:#f0fdf4;color:#15803d;
+  border:1px solid #bbf7d0
+}
+#map-status.loading{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
+#map-status.error{background:#fef2f2;color:#dc2626;border-color:#fecaca}
+svg#ksvg{width:100%;height:auto;display:block;cursor:pointer}
+.dist{
+  fill:var(--d-default);
+  stroke:var(--d-stroke);
+  stroke-width:0.7;
+  transition:fill 0.12s
+}
+.dist:hover{fill:var(--d-hover)}
+.dist.selected{fill:var(--d-selected)!important}
+.dist.fetching{fill:var(--d-loading)!important;animation:dp .6s ease-in-out infinite alternate}
+@keyframes dp{to{fill:#c4b5fd}}
+.dlabel{
+  font-family:'Inter',sans-serif;
+  font-size:5px;
+  font-weight:600;
+  fill:#1e3a5f;
+  pointer-events:none;
+  text-shadow:0 0 3px rgba(255,255,255,0.8)
+}
+.leg{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;justify-content:center}
+.li{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3)}
+.ld{width:10px;height:10px;border-radius:2px;border:1px solid rgba(0,0,0,0.08)}
+
+/* INFO PANEL */
+.info-panel{
+  width:300px;flex-shrink:0;
+  background:var(--surface);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;
+  overflow-y:auto
+}
+.hint{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;gap:14px;padding:48px 24px;flex:1
+}
+.hint-icon{font-size:52px;opacity:0.25}
+.hint-title{font-size:16px;font-weight:600;color:var(--text2)}
+.hint-body{font-size:13px;color:var(--text3);line-height:1.7;max-width:200px}
+
+/* INFO CONTENT */
+.info-content{padding:20px;display:flex;flex-direction:column;gap:14px}
+.dist-name{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-0.01em}
+.dist-sub{font-size:12px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:0.06em}
+.pot-badge{
+  display:inline-block;font-size:11px;font-weight:600;
+  padding:4px 12px;border-radius:20px;margin-top:8px;
+  letter-spacing:0.03em
+}
+.ph{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+.pm{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}
+.pl{background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe}
+
+.section-label{
+  font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.08em;color:var(--text3);
+  margin-bottom:8px
+}
+.weather-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wcard{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:10px;padding:10px 12px
+}
+.wc-icon{font-size:16px;margin-bottom:4px}
+.wc-lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3)}
+.wc-val{
+  font-size:20px;font-weight:700;color:var(--text);
+  font-family:'JetBrains Mono',monospace;
+  line-height:1;margin-top:2px
+}
+.wc-unit{font-size:10px;font-weight:400;color:var(--text3);margin-left:2px}
+
+.solar-card{
+  background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 50%,#fde68a 100%);
+  border:1px solid #fcd34d;
+  border-radius:12px;padding:16px
+}
+.sc-label{
+  font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.08em;color:#78350f;margin-bottom:6px
+}
+.sc-main{
+  font-size:40px;font-weight:700;
+  font-family:'JetBrains Mono',monospace;
+  color:#1c1917;line-height:1
+}
+.sc-unit{font-size:12px;color:#78350f;margin-top:3px;font-weight:500}
+.sc-bar-bg{background:rgba(0,0,0,0.1);border-radius:4px;height:6px;margin:12px 0 10px}
+.sc-bar{height:6px;border-radius:4px;background:linear-gradient(90deg,#f59e0b,#ef4444);transition:width .8s cubic-bezier(.4,0,.2,1)}
+.sc-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ss{
+  background:rgba(255,255,255,0.6);
+  border-radius:8px;padding:8px 10px;
+  border:1px solid rgba(245,158,11,0.2)
+}
+.ss-lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#92400e}
+.ss-val{
+  font-size:15px;font-weight:700;
+  font-family:'JetBrains Mono',monospace;
+  color:#1c1917;margin-top:2px
+}
+.divider{height:1px;background:var(--border);margin:2px 0}
+.loading-panel{display:flex;align-items:center;gap:10px;padding:20px;color:var(--text3);font-size:13px}
+.spin{
+  width:18px;height:18px;border:2px solid var(--border2);
+  border-top-color:var(--blue);
+  border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:720px){
+  .body{flex-direction:column}
+  .info-panel{width:100%;border-left:none;border-top:1px solid var(--border);max-height:380px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="hlogo">☀️</div>
+    <div>
+      <div class="htitle">Karnataka Solar Prediction</div>
+      <div class="hsub">Live weather · District-level forecast</div>
+    </div>
+  </div>
+  <div class="hbadge">🌤 Open-Meteo API</div>
+</div>
+
+<!-- BODY -->
+<div class="body">
+
+  <!-- MAP -->
+  <div class="map-panel">
+    <div id="map-wrap">
+      <div class="map-header">
+        <div class="map-title">🗺 Karnataka — All Districts</div>
+        <div id="map-status" class="loading">Loading map…</div>
+      </div>
+      <svg id="ksvg" viewBox="0 0 500 580"></svg>
+      <div class="leg">
+        <div class="li"><div class="ld" style="background:#bfdbfe"></div>Default</div>
+        <div class="li"><div class="ld" style="background:#3b82f6"></div>Hover</div>
+        <div class="li"><div class="ld" style="background:#f59e0b"></div>Selected</div>
+        <div class="li"><div class="ld" style="background:#a78bfa"></div>Fetching data</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFO -->
+  <div class="info-panel" id="info-panel">
+    <div class="hint">
+      <div class="hint-icon">🌞</div>
+      <div class="hint-title">Select a District</div>
+      <div class="hint-body">Click any district on the map to fetch live weather and predict solar energy generation.</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+// ── District meta (lat/lon for weather API) ──────────────────────────────────
+const META = {
+  "Bagalkot":{lat:16.18,lon:75.70},"Ballari":{lat:15.14,lon:76.92},
+  "Bangalore Rural":{lat:13.20,lon:77.39},"Bangalore Urban":{lat:12.97,lon:77.59},
+  "Belgaum":{lat:15.85,lon:74.50},"Bellary":{lat:15.14,lon:76.92},
+  "Bidar":{lat:17.91,lon:77.52},"Bijapur":{lat:16.83,lon:75.71},
+  "Chamarajanagar":{lat:11.93,lon:77.15},"Chikkaballapur":{lat:13.44,lon:77.73},
+  "Chikmagalur":{lat:13.32,lon:75.77},"Chitradurga":{lat:14.23,lon:76.40},
+  "Dakshina Kannada":{lat:12.84,lon:75.25},"Davanagere":{lat:14.46,lon:75.92},
+  "Dharwad":{lat:15.46,lon:75.01},"Gadag":{lat:15.43,lon:75.64},
+  "Gulbarga":{lat:17.33,lon:76.82},"Hassan":{lat:13.01,lon:76.10},
+  "Haveri":{lat:14.79,lon:75.40},"Kodagu":{lat:12.34,lon:75.81},
+  "Kolar":{lat:13.14,lon:78.13},"Koppal":{lat:15.35,lon:76.15},
+  "Mandya":{lat:12.52,lon:76.90},"Mysore":{lat:12.30,lon:76.64},
+  "Raichur":{lat:16.21,lon:77.36},"Ramanagara":{lat:12.72,lon:77.28},
+  "Shimoga":{lat:13.93,lon:75.57},"Tumkur":{lat:13.34,lon:77.10},
+  "Udupi":{lat:13.34,lon:74.74},"Uttara Kannada":{lat:14.79,lon:74.60},
+  "Yadgir":{lat:16.77,lon:77.14},"Kalaburagi":{lat:17.33,lon:76.82},
+  "Belagavi":{lat:15.85,lon:74.50},"Vijayapura":{lat:16.83,lon:75.71},
+  "Shivamogga":{lat:13.93,lon:75.57},"Vijayanagara":{lat:15.17,lon:76.46},
+  "Bengaluru Rural":{lat:13.20,lon:77.39},"Bengaluru Urban":{lat:12.97,lon:77.59},
+};
+
+function getMeta(name) {
+  if (META[name]) return META[name];
+  const lo = name.toLowerCase();
+  for (const [k,v] of Object.entries(META)) {
+    if (lo.includes(k.toLowerCase()) || k.toLowerCase().includes(lo)) return v;
+  }
+  return {lat:14.5,lon:76.5};
+}
+
+// ── D3 setup ─────────────────────────────────────────────────────────────────
+const svg = d3.select("#ksvg");
+const proj = d3.geoMercator().center([76.3,14.65]).scale(2380).translate([250,290]);
+const pathFn = d3.geoPath().projection(proj);
+const statusEl = document.getElementById("map-status");
+let selEl = null;
+
+// ── GeoJSON sources ───────────────────────────────────────────────────────────
+// These are real GADM-sourced Karnataka district boundaries
+// The browser will try each in order until one loads
+const URLS = [
+  "https://cdn.jsdelivr.net/gh/inosaint/StatesOfIndia@master/karnataka.geojson",
+  "https://raw.githubusercontent.com/inosaint/StatesOfIndia/master/karnataka.geojson",
+  "https://cdn.jsdelivr.net/gh/civictech-India/INDIA-GEO-JSON-Datasets@main/Karnataka_District_Boundary.json",
+  "https://raw.githubusercontent.com/civictech-India/INDIA-GEO-JSON-Datasets/main/Karnataka_District_Boundary.json",
+  "https://cdn.jsdelivr.net/gh/udit-001/india-maps-data@main/States/Karnataka.json",
+];
+
+async function loadGeo() {
+  for (const url of URLS) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) continue;
+      const data = await r.json();
+      if (data && data.features && data.features.length > 5) return data;
+    } catch {}
+  }
+  return null;
+}
+
+loadGeo().then(geo => {
+  if (!geo) {
+    statusEl.textContent = "⚠ No internet — open in browser with internet";
+    statusEl.className = "error";
+    // Draw a placeholder text
+    svg.append("text")
+      .attr("x",250).attr("y",290).attr("text-anchor","middle")
+      .attr("fill","#94a3b8").attr("font-size","13").attr("font-family","Inter")
+      .text("Open this .html file in a browser with internet access");
+    return;
+  }
+
+  statusEl.textContent = `✓ ${geo.features.length} districts loaded`;
+  statusEl.className = "";
+  statusEl.style.background="#f0fdf4";
+  statusEl.style.color="#15803d";
+  statusEl.style.borderColor="#bbf7d0";
+
+  // Draw district polygons
+  svg.selectAll("path.dist")
+    .data(geo.features)
+    .join("path")
+    .attr("class","dist")
+    .attr("d", pathFn)
+    .on("click", function(evt, d) {
+      const name = d.properties.NAME_2 || d.properties.district || d.properties.name || d.properties.DISTRICT || "District";
+      if (selEl && selEl !== this) {
+        selEl.classList.remove("selected","fetching");
+      }
+      this.classList.remove("selected");
+      this.classList.add("fetching");
+      selEl = this;
+      showLoading(name);
+      doFetch(name, this);
+    });
+
+  // Draw labels
+  geo.features.forEach(f => {
+    const c = pathFn.centroid(f);
+    if (isNaN(c[0])) return;
+    const name = f.properties.NAME_2 || f.properties.district || f.properties.name || "";
+    const label = name.length > 10 ? name.slice(0,9)+"…" : name;
+    svg.append("text").attr("class","dlabel")
+      .attr("x",c[0]).attr("y",c[1]+1.5)
+      .attr("text-anchor","middle").text(label);
+  });
+});
+
+// ── Weather + Solar ───────────────────────────────────────────────────────────
+async function doFetch(name, el) {
+
+  const m = getMeta(name);
+
+  try {
+
+    // OPEN METEO API
+    const url =
+      `https://api.open-meteo.com/v1/forecast?latitude=${m.lat}&longitude=${m.lon}` +
+      `&current=temperature_2m,relative_humidity_2m,cloud_cover,wind_speed_10m,precipitation,direct_radiation` +
+      `&daily=sunshine_duration&timezone=Asia%2FKolkata&forecast_days=1`;
+
+    const j = await (await fetch(url)).json();
+
+    // WEATHER VALUES
+    const temp = +(j.current.temperature_2m ?? 0).toFixed(1);
+    const hum = Math.round(j.current.relative_humidity_2m ?? 0);
+    const cloud = Math.round(j.current.cloud_cover ?? 0);
+    const wind = +(j.current.wind_speed_10m ?? 0).toFixed(1);
+    const prec = +(j.current.precipitation ?? 0).toFixed(1);
+
+    // SEND DATA TO FLASK ML MODEL
+    const payload = {
+      Temperature: temp,
+      Pressure: 30.46,
+      Humidity: hum,
+      WindDirection: 177,
+      Speed: wind
+    };
+
+    // CALL FLASK API
+    const response = await fetch("http://127.0.0.1:5000/predict", {
+
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify(payload)
+
+    });
+
+    const result = await response.json();
+
+    console.log(result);
+
+    
+
+    el.classList.remove("fetching");
+    el.classList.add("selected");
+
+    renderInfo(name, j.current, j.daily?.sunshine_duration?.[0] ?? 0);
+
+  } catch (error) {
+
+    console.log(error);
+
+    el.classList.remove("fetching");
+    el.classList.add("selected");
+
+    document.getElementById("info-panel").innerHTML =
+      `<div class="info-content">
+        <div class="dist-name">${name}</div>
+        <div class="dist-sub">Karnataka, India</div>
+        <p style="color:red;font-size:13px;margin-top:12px">
+          Error connecting to ML model
+        </p>
+      </div>`;
+  }
+}
+function solarKwh(temp,hum,cloud,rad) {
+  const b = rad>10 ? (rad/1000)*5.5 : 3.8;
+  return +(b*(1-(cloud/100)*0.85)*(1-(hum/100)*0.12)*(temp>35?.95:temp<18?.92:1)).toFixed(2);
+}
+
+function renderInfo(name, c, sun) {
+  const temp = +(c.temperature_2m??0).toFixed(1);
+  const hum  = Math.round(c.relative_humidity_2m??0);
+  const cloud= Math.round(c.cloud_cover??0);
+  const wind = +(c.wind_speed_10m??0).toFixed(1);
+  const prec = +(c.precipitation??0).toFixed(1);
+  const rad  = Math.round(c.direct_radiation??0);
+  const sunH = Math.round(sun/3600);
+  const kwh  = solarKwh(temp,hum,cloud,rad);
+  const pct  = Math.min(100,Math.round((kwh/8)*100));
+  const [badge,bc] = kwh>=5.5?["☀️ Excellent","ph"]:kwh>=3.8?["⛅ Good","pm"]:["🌥 Moderate","pl"];
+
+  document.getElementById("info-panel").innerHTML = `
+<div class="info-content">
+  <div>
+    <div class="dist-name">${name}</div>
+    <div class="dist-sub">Karnataka · Live Weather</div>
+    <span class="pot-badge ${bc}">${badge} Solar Potential</span>
+  </div>
+  <div class="divider"></div>
+  <div>
+    <div class="section-label">Current Conditions</div>
+    <div class="weather-grid">
+      <div class="wcard">
+        <div class="wc-icon">🌡</div>
+        <div class="wc-lbl">Temperature</div>
+        <div class="wc-val">${temp}<span class="wc-unit">°C</span></div>
+      </div>
+      <div class="wcard">
+        <div class="wc-icon">💧</div>
+        <div class="wc-lbl">Humidity</div>
+        <div class="wc-val">${hum}<span class="wc-unit">%</span></div>
+      </div>
+      <div class="wcard">
+        <div class="wc-icon">☁️</div>
+        <div class="wc-lbl">Cloud Cover</div>
+        <div class="wc-val">${cloud}<span class="wc-unit">%</span></div>
+      </div>
+      <div class="wcard">
+        <div class="wc-icon">💨</div>
+        <div class="wc-lbl">Wind</div>
+        <div class="wc-val">${wind}<span class="wc-unit">km/h</span></div>
+      </div>
+      <div class="wcard">
+        <div class="wc-icon">🌤</div>
+        <div class="wc-lbl">Sunshine</div>
+        <div class="wc-val">${sunH}<span class="wc-unit">hrs</span></div>
+      </div>
+      <div class="wcard">
+        <div class="wc-icon">⚡</div>
+        <div class="wc-lbl">Radiation</div>
+        <div class="wc-val">${rad}<span class="wc-unit">W/m²</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="solar-card">
+    <div class="sc-label">⚡ Predicted Solar Generation</div>
+    <div class="sc-main">${kwh}</div>
+    <div class="sc-unit">kWh / m² / day</div>
+    <div class="sc-bar-bg"><div class="sc-bar" style="width:${pct}%"></div></div>
+    <div class="sc-stats">
+      <div class="ss"><div class="ss-lbl">Monthly</div><div class="ss-val">${Math.round(kwh*30)}</div></div>
+      <div class="ss"><div class="ss-lbl">Annual</div><div class="ss-val">${Math.round(kwh*365)}</div></div>
+      <div class="ss"><div class="ss-lbl">1MW / day</div><div class="ss-val">~${Math.round(kwh*1000*0.18)} kWh</div></div>
+      <div class="ss"><div class="ss-lbl">Precipitation</div><div class="ss-val">${prec} mm</div></div>
+    </div>
+  </div>
+</div>`;
+}
+
+function showLoading(name) {
+  document.getElementById("info-panel").innerHTML = `
+<div class="info-content">
+  <div class="dist-name">${name}</div>
+  <div class="dist-sub">Karnataka, India</div>
+  <div class="loading-panel"><div class="spin"></div> Fetching live weather data…</div>
+</div>`;
+}
+</script>
+</body>
+</html>
