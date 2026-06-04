@@ -367,24 +367,40 @@ async function loadGeo() {
   }
   return null;
 }
-
 loadGeo().then(geo => {
+
+  console.log("District Count:", geo.features.length);
+
+  geo.features.forEach(d =>
+    console.log(
+      d.properties.NAME_2 ||
+      d.properties.district ||
+      d.properties.name ||
+      d.properties.DISTRICT
+    )
+  );
+
   if (!geo) {
     statusEl.textContent = "⚠ No internet — open in browser with internet";
     statusEl.className = "error";
-    // Draw a placeholder text
+
     svg.append("text")
-      .attr("x",250).attr("y",290).attr("text-anchor","middle")
-      .attr("fill","#94a3b8").attr("font-size","13").attr("font-family","Inter")
+      .attr("x",250)
+      .attr("y",290)
+      .attr("text-anchor","middle")
+      .attr("fill","#94a3b8")
+      .attr("font-size","13")
+      .attr("font-family","Inter")
       .text("Open this .html file in a browser with internet access");
+
     return;
   }
 
   statusEl.textContent = `✓ ${geo.features.length} districts loaded`;
   statusEl.className = "";
-  statusEl.style.background="#f0fdf4";
-  statusEl.style.color="#15803d";
-  statusEl.style.borderColor="#bbf7d0";
+  statusEl.style.background = "#f0fdf4";
+  statusEl.style.color = "#15803d";
+  statusEl.style.borderColor = "#bbf7d0";
 
   // Draw district polygons
   svg.selectAll("path.dist")
@@ -393,17 +409,26 @@ loadGeo().then(geo => {
     .attr("class","dist")
     .attr("d", pathFn)
     .on("click", function(evt, d) {
-      const name = d.properties.NAME_2 || d.properties.district || d.properties.name || d.properties.DISTRICT || "District";
+      const name =
+        d.properties.NAME_2 ||
+        d.properties.district ||
+        d.properties.name ||
+        d.properties.DISTRICT ||
+        "District";
+
       if (selEl && selEl !== this) {
         selEl.classList.remove("selected","fetching");
       }
+
       this.classList.remove("selected");
       this.classList.add("fetching");
       selEl = this;
+
       showLoading(name);
       doFetch(name, this);
     });
 
+});
   // Draw labels
   geo.features.forEach(f => {
     const c = pathFn.centroid(f);
@@ -414,7 +439,7 @@ loadGeo().then(geo => {
       .attr("x",c[0]).attr("y",c[1]+1.5)
       .attr("text-anchor","middle").text(label);
   });
-});
+
 
 // ── Weather + Solar ───────────────────────────────────────────────────────────
 async function doFetch(name, el) {
