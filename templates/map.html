@@ -27,6 +27,64 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;}
 
+
+/* Styled Map Node Info Blocks */
+.focus-node-wrap {
+  margin-top: 24px;
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 24px;
+}
+.node-sub-lbl {
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.node-main-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 6px 0 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.yield-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+.yp-high { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.yp-bal { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.yp-atten { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+.calculated-yield-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px;
+  margin-top: 18px;
+}
+.cy-val {
+  font-size: 48px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: #b45309;
+  line-height: 1;
+  margin-top: 6px;
+}
+.cy-unit {
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  margin-left: 6px;
+}
+
 .header{
   background:var(--surface);
   border-bottom:1px solid var(--border);
@@ -65,6 +123,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overf
   gap: 28px;
 }
 
+
 .hero-grid {
   display: grid;
   grid-template-columns: 1.1fr 1fr;
@@ -84,7 +143,7 @@ svg#ksvg { width: 100%; height: 700px; display: block; cursor: pointer; max-heig
 .dist:hover { fill: var(--d-hover); }
 .dist.selected { fill: var(--d-selected)!important; }
 
-.dlabel { font-family: 'Inter', sans-serif; font-size: 5.5px; font-weight: 700; fill: #1e3a5f; pointer-events: none; text-shadow: 0 0 3px rgba(255,255,255,0.8); }
+.dlabel { font-family: 'Inter', sans-serif; font-size: 9.5px; font-weight: 700; fill: #1e3a5f; pointer-events: none; text-shadow: 0 0 3px rgba(255,255,255,0.8); }
 .map-legend { display: flex; gap: 16px; margin-top: 16px; justify-content: center; }
 .leg-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; color: var(--text2); }
 .leg-color { width: 12px; height: 12px; border-radius: 3px; }
@@ -422,36 +481,60 @@ function triggerInterfaceState(name) {
 function compileInnovativeLayout(name, t, h, c, w, p, r, sHrs) {
   const kwh = solarKwh(t, h, c, r);
   const pct = Math.min(100, Math.round((kwh / 8) * 100));
-  const [badge, cls] = kwh >= 5.3 ? ["☀️ High Yield Capacity", "ph"] : kwh >= 3.8 ? ["⛅ Balanced Profile", "pm"] : ["🌥 Attenuated Zone", "pl"];
+  
+  // Isolate custom configurations for badging strings
+  let badgeText = "Balanced Profile";
+  let pillClass = "yp-bal";
+  let icon = "⛅";
+  
+  if (kwh >= 5.3) {
+    badgeText = "High Yield Capacity";
+    pillClass = "yp-high";
+    icon = "☀️";
+  } else if (kwh < 3.8) {
+    badgeText = "Attenuated Zone";
+    pillClass = "yp-atten";
+    icon = "🔗";
+  }
 
   const standardDailyYield = Math.round(kwh * 20);
   const standardMonthlyYield = Math.round(standardDailyYield * 30);
   const standardAnnualYield = Math.round(standardDailyYield * 365);
-  const gridAutonomyScore = Math.min(100, Math.round((kwh / 5.2) * 100));
 
+  // Update Right-Side Panel to perfectly match the mockup composition
   document.getElementById("target-summary-panel").innerHTML = `
-    <div style="padding:8px; display:flex; flex-direction:column; justify-content:space-between; flex:1">
-      <div>
-        <div style="font-size:11px; font-weight:800; color:var(--text3); text-transform:uppercase;">Focus Subdivision Node</div>
-        <div style="font-size:24px; font-weight:800; color:var(--text); margin-top:2px">${name}</div>
-        <div style="margin-top:8px;"><span class="pot-badge-wide ${cls}">${badge}</span></div>
+    <div style="display:flex; flex-direction:column; gap:4px;">
+      <h2 class="project-about-title">🤩 About SolarGen AI Framework</h2>
+      <p class="project-about-text">
+        SolarGen AI is an advanced predictive platform engineering solution designed to map, track, and forecast solar power generation capabilities across the districts of Karnataka. By integrating high-resolution meteorological data streams with machine learning algorithms, the system delivers precise insights into regional green energy potential.
+      </p>
+      
+      <div style="background:#f8fafc; border-left:4px solid #f59e0b; border-radius:4px; padding:12px 16px; margin:14px 0 4px 0;">
+        <p class="project-about-text" style="font-weight:500;">
+          <strong style="color:#0f172a;">Key Functionality:</strong> Select any territorial node across the spatial engine canvas to instantly isolate atmospheric variables (Air Temperature, Humidity, Cloud Density) and compute live generation estimations, monthly unit scaling forecasts, and absolute plant projections.
+        </p>
       </div>
-      <div style="background:var(--bg); border-radius:14px; padding:16px; margin:14px 0;">
-        <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text3)">Irradiance Matrix Yield</div>
-        <div style="font-size:32px; font-weight:800; font-family:'JetBrains Mono'; color:var(--accent-dark); margin-top:4px">${kwh} <span style="font-size:13px; font-weight:500; color:var(--text2)">kWh/m²/day</span></div>
+
+      <div class="focus-node-wrap">
+        <div class="node-sub-lbl">Focus Subdivision Node</div>
+        <div class="node-main-title">📍 ${name}</div>
+        <div>
+          <span class="yield-pill ${pillClass}">${icon} ${badgeText}</span>
+        </div>
+        
+        <div class="calculated-yield-card">
+          <div class="node-sub-lbl">Calculated Energy Yield</div>
+          <div class="cy-val">${kwh}<span class="cy-unit">kWh/m²/day</span></div>
+        </div>
       </div>
-     <p style="font-size:12px; color:var(--text3); line-height:1.6">
-This project predicts solar energy generation for Karnataka districts using
-weather data and machine learning. Select a district to view its solar
-potential, daily generation, monthly forecast and annual energy estimate.
-</p>
     </div>
   `;
 
+  // Retain your multi-grid details in the wide horizontal bottom panel 
   document.getElementById("horizontal-full-display").innerHTML = `
     <div class="rendered-layout-header">
       <div>
-        <div class="render-district-title">${name} Solar Power Prediction Report </div>
+        <div class="render-district-title">${name} Solar Power Prediction Report</div>
         <div class="render-district-sub">Real-Time Weather Analysis and Solar Power Forecasting</div>
       </div>
     </div>
@@ -473,8 +556,8 @@ potential, daily generation, monthly forecast and annual energy estimate.
         <div class="sc-bar-bg-wide"><div class="sc-bar-wide" style="width:${pct}%"></div></div>
       </div>
       <div class="macro-right-grid">
-        <div class="macro-subcard"><div class="ms-lbl">30-Day/Monthly Base Extrapolation</div><div class="ms-val">${Math.round(kwh*30)} <span style="font-size:12px; color:var(--text3)">Kwh Units/per month</span></div></div>
-        <div class="macro-subcard"><div class="ms-lbl">Annual Capture Yield</div><div class="ms-val">${Math.round(kwh*365)} <span style="font-size:12px; color:var(--text3)">Kwh Units/per annual</span></div></div>
+        <div class="macro-subcard"><div class="ms-lbl">30-Days Predicted Generation</div><div class="ms-val">${Math.round(kwh*30)} <span style="font-size:12px; color:var(--text3)">Kwh Units/per month</span></div></div>
+        <div class="macro-subcard"><div class="ms-lbl">Annual Predicted Generation</div><div class="ms-val">${Math.round(kwh*365)} <span style="font-size:12px; color:var(--text3)">Kwh Units/per annual</span></div></div>
         <div class="macro-subcard"><div class="ms-lbl">Precipitation Structural Risk</div><div class="ms-val">${p} <span style="font-size:12px; color:var(--text3)">mm</span></div></div>
         <div class="macro-subcard"><div class="ms-lbl">Industrial 1MW Daily Array</div><div class="ms-val">~${Math.round(kwh*1000*0.18)} <span style="font-size:12px; color:var(--text3)">kWh</span></div></div>
       </div>
@@ -486,32 +569,17 @@ potential, daily generation, monthly forecast and annual energy estimate.
         <p class="innov-desc">Atmospheric profiles indicate high solar clarity over <span class="innov-highlight">${name}</span>. Under current irradiance values, a 20m² rooftop array captures roughly <span class="innov-highlight">${standardDailyYield} kWh</span> of electricity today.</p>
       </div>
       <div class="innov-card">
-        <div class="innov-header"> 🏭 Large-Scale Solar Plant Projection</div>
+        <div class="innov-header">🏭 Large-Scale Solar Plant Projection</div>
         <p class="innov-desc">Deploying solar infrastructure provides massive grid offloading capacity. This setup collects an estimated <span class="innov-highlight">${standardMonthlyYield} Units/month</span>, building a long-term return scale of <span class="innov-highlight">${standardAnnualYield} Units collected yearly</span>.</p>
       </div>
       <div class="innov-card">
-  <div class="innov-header">📊 Prediction Summary</div>
-  <p class="innov-desc">
-    This prediction is generated using live weather parameters including
-    temperature, humidity, cloud cover, sunshine duration and solar radiation.
-
-    <br><br>
-
-    <span class="innov-highlight">${name}</span>
-    is predicted to generate approximately
-    <span class="innov-highlight">${kwh} kWh/m²/day</span>.
-
-    <br><br>
-
-    ${
-      kwh >= 5.5
-      ? "This district has excellent solar potential and is highly suitable for solar power generation."
-      : kwh >= 4
-      ? "This district has good solar potential and can efficiently generate solar energy."
-      : "This district has moderate solar potential due to current weather conditions."
-    }
-  </p>
-</div>
+        <div class="innov-header">📊 Prediction Summary</div>
+        <p class="innov-desc">
+          This prediction is generated using live weather parameters including temperature, humidity, cloud cover, sunshine duration and solar radiation.<br><br>
+          <span class="innov-highlight">${name}</span> is predicted to generate approximately <span class="innov-highlight">${kwh} kWh/m²/day</span>.<br><br>
+          ${kwh >= 5.5 ? "This district has excellent solar potential and is highly suitable for solar power generation." : kwh >= 4 ? "This district has good solar potential and can efficiently generate solar energy." : "This district has moderate solar potential due to current weather conditions."}
+        </p>
+      </div>
     </div>
   `;
 }
